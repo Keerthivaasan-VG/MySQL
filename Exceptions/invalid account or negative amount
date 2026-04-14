@@ -1,0 +1,43 @@
+DELIMITER $$
+
+CREATE PROCEDURE deposit_amount(
+    IN p_account_no INT, 
+    IN p_amount INT
+)
+BEGIN
+
+    
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SELECT 'Error: An SQL error occurred.' AS Status;
+    END;
+    
+    DECLARE EXIT HANDLER FOR SQLSTATE '45001'
+    BEGIN
+        SELECT 'Error: Account does not exist.' AS Status;
+    END;
+
+    DECLARE EXIT HANDLER FOR SQLSTATE '45002'
+    BEGIN
+        SELECT 'Error: Negative amount not allowed.' AS Status;
+    END;
+
+    IF NOT EXISTS (SELECT 1 FROM accounts WHERE ACCOUNT_NO = p_account_no) THEN
+        SIGNAL SQLSTATE '45001';
+    END IF;
+
+    IF p_amount < 0 THEN
+        SIGNAL SQLSTATE '45002';
+    END IF;
+
+    UPDATE accounts 
+    SET BALANCE = BALANCE + p_amount 
+    WHERE ACCOUNT_NO = p_account_no;
+
+    INSERT INTO transactions(ACCOUNT_NO, TRANS_TYPE, AMOUNT, TRANS_DATE)
+    VALUES(p_account_no, 'Credit', p_amount, CURDATE());
+
+    SELECT 'Deposit successful.' AS Status;
+END$$
+
+DELIMITER ;
