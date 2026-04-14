@@ -4,22 +4,27 @@ CREATE PROCEDURE withdraw_amount(
     IN p_account_no INT, 
     IN p_amount INT
 )
+
 BEGIN
-    
+
+    -- Handler for General System Errors (Table missing, Disk full, etc.)
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
         SELECT 'Error: Error occurred during transaction.' AS Status;
     END;
 
+    -- Handler for Specific Business Logic (Insufficient Funds)
     DECLARE EXIT HANDLER FOR SQLSTATE '45000'
     BEGIN
         SELECT 'Error: Insufficient balance.' AS Status;
     END;
 
+    -- Check if balance is enough
     IF (SELECT BALANCE FROM accounts WHERE ACCOUNT_NO = p_account_no) < p_amount THEN
         SIGNAL SQLSTATE '45000';
     END IF;
 
+    -- Execute transaction
     UPDATE accounts 
     SET BALANCE = BALANCE - p_amount 
     WHERE ACCOUNT_NO = p_account_no;
