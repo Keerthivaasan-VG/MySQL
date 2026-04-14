@@ -1,0 +1,22 @@
+DELIMITER $$
+
+CREATE TRIGGER calculate_total_price
+BEFORE INSERT ON ORDERS
+FOR EACH ROW
+BEGIN
+    -- 1. Create a temporary variable to hold the product's price
+    DECLARE p_price DECIMAL(10,2);
+
+    -- 2. Find the price from the PRODUCTS table using the ID we just typed in (NEW.PRODUCT_ID)
+    -- and store that price into our temporary variable (p_price)
+    SELECT PRICE INTO p_price
+    FROM PRODUCTS
+    WHERE PRODUCT_ID = NEW.PRODUCT_ID;
+
+    -- 3. Multiply the price we found by the quantity entered (NEW.QUANTITY)
+    -- and automatically fill in the TOTAL_PRICE column
+    SET NEW.TOTAL_PRICE = p_price * NEW.QUANTITY;
+
+END $$
+
+DELIMITER ;
