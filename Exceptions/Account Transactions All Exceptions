@@ -1,0 +1,56 @@
+DELIMITER $$
+
+CREATE PROCEDURE transfer_funds(
+    IN p_from_account INT,
+    IN p_to_account INT,
+    IN p_amount INT
+)
+BEGIN
+    -- 1. HANDLERS (The Rules)
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION   SELECT 'Error: System error during transfer.' AS Status;
+    DECLARE EXIT HANDLER FOR SQLSTATE '45001' SELECT 'Error: Source account not found.' AS Status;
+    DECLARE EXIT HANDLER FOR SQLSTATE '45002' SELECT 'Error: Destination account not found.' AS Status;
+    DECLARE EXIT HANDLER FOR SQLSTATE '45003' SELECT 'Error: Invalid amount.' AS Status;
+    DECLARE EXIT HANDLER FOR SQLSTATE '45004' SELECT 'Error: Insufficient balance.' AS Status;
+    
+
+    -- 2. VALIDATIONS (The Checks)
+    -- Check if sender exists
+    IF NOT EXISTS (SELECT 1 FROM accounts WHERE ACCOUNT_NO = p_from_account) THEN
+        SIGNAL SQLSTATE '45001';
+    END IF;
+
+    -- Check if receiver exists
+    IF NOT EXISTS (SELECT 1 FROM accounts WHERE ACCOUNT_NO = p_to_account) THEN
+        SIGNAL SQLSTATE '45002';
+    END IF;
+
+    -- Check if amount is valid
+    IF p_amount <= 0 THEN
+        SIGNAL SQLSTATE '45003';
+    END IF;
+
+    -- Check if sender has enough money
+    IF (SELECT BALANCE FROM accounts WHERE ACCOUNT_NO = p_from_account) < p_amount THEN
+        SIGNAL SQLSTATE '45004';
+    END IF;
+
+    -- 3. THE TRANSFER (The Work)
+    -- Subtract from sender
+    UPDATE accounts SET BALANCE = BALANCE - p_amount WHERE ACCOUNT_NO = p_from_account;
+    -- Add to receiver
+    UPDATE accounts SET BALANCE = BALANCE + p_amount WHERE ACCOUNT_NO = p_to_account;
+
+    -- 4. LOGGING (The Records)
+    INSERT INTO transactions(ACCOUNT_NO, TRANS_TYPE, AMOUNT, TRANS_DATE) 
+    VALUES (p_from_account, 'Debit', p_amount, CURDATE());
+    
+    INSERT INTO transactions(ACCOUNT_NO, TRANS_TYPE, AMOUNT, TRANS_DATE) 
+    VALUES (p_to_account, 'Credit', p_amount, CURDATE());
+
+    -- 5. SUCCESS
+    SELECT 'Transfer successful.' AS Status;
+
+END$$
+
+DELIMITER ;
