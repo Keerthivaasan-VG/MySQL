@@ -6,22 +6,27 @@ CREATE PROCEDURE deposit_amount(
 )
 BEGIN
 
-    
+    -- 1. Handler for: Any other System Error
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
         SELECT 'Error: An SQL error occurred.' AS Status;
     END;
-    
+
+    -- 2. Handler for: Wrong Account
     DECLARE EXIT HANDLER FOR SQLSTATE '45001'
     BEGIN
         SELECT 'Error: Account does not exist.' AS Status;
     END;
 
+    -- 3. Handler for: Negative Money
     DECLARE EXIT HANDLER FOR SQLSTATE '45002'
     BEGIN
         SELECT 'Error: Negative amount not allowed.' AS Status;
     END;
 
+    
+
+    -- START VALIDATIONS
     IF NOT EXISTS (SELECT 1 FROM accounts WHERE ACCOUNT_NO = p_account_no) THEN
         SIGNAL SQLSTATE '45001';
     END IF;
@@ -30,6 +35,7 @@ BEGIN
         SIGNAL SQLSTATE '45002';
     END IF;
 
+    -- START ACTIONS
     UPDATE accounts 
     SET BALANCE = BALANCE + p_amount 
     WHERE ACCOUNT_NO = p_account_no;
