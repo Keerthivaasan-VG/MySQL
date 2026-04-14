@@ -1,0 +1,15 @@
+DELIMITER $$
+
+CREATE TRIGGER reduce_stock
+AFTER INSERT ON ORDERS
+FOR EACH ROW
+BEGIN
+    -- Update the PRODUCTS table
+    UPDATE PRODUCTS
+    -- Subtract the quantity ordered from the current stock
+    SET STOCK = STOCK - NEW.QUANTITY
+    -- Match the Product ID of the order we just made
+    WHERE PRODUCT_ID = NEW.PRODUCT_ID;
+END $$
+
+DELIMITER ;
